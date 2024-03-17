@@ -1,0 +1,61 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(caret)
+library(e1071)
+```
+
+```{r}
+data(BreastCancer)
+BreastCancer <- na.omit(BreastCancer)  
+
+set.seed(123)  
+index <- createDataPartition(BreastCancer$Class, p = 0.8, list = FALSE)
+trainData <- BreastCancer[index, ]
+testData <- BreastCancer[-index, ]
+```
+
+```{r}
+set.seed(123)
+model1 <- train(Class ~ ., data = trainData, method = "rpart")
+model2 <- train(Class ~ ., data = trainData, method = "svmLinear")
+model3 <- train(Class ~ ., data = trainData, method = "glm")
+```
+
+```{r}
+predictions1 <- predict(model1, testData)
+predictions2 <- predict(model2, testData)
+predictions3 <- predict(model3, testData)
+```
+
+
+#For majority voting, we need to convert factor type predictions to numeric values (0 and 1)
+#Here we assume 'benign' is 0 and 'malignant' is 1
+```{r}
+predictions1_num <- as.numeric(predictions1 == "malignant")
+predictions2_num <- as.numeric(predictions2 == "malignant")
+predictions3_num <- as.numeric(predictions3 == "malignant")
+```
+
+
+```{r}
+combinedPredictions <- cbind(predictions1_num, predictions2_num, predictions3_num)
+```
+
+
+```{r}
+finalPredictionNum <- apply(combinedPredictions, 1, function(x) {
+  sum(x) >= 2 ? 1 : 0
+})
+
+finalPrediction <- factor(finalPredictionNum, levels = c(0, 1), labels = classLabels)
+
+confusionMatrix(finalPrediction, testData$Class)
+```
